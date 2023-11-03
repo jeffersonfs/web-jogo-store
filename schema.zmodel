@@ -1,0 +1,68 @@
+
+datasource db {
+    provider = "postgresql"
+    url = env("POSTGRES_PRISMA_URL")
+    directUrl = env("POSTGRES_URL_NON_POOLING")
+    shadowDatabaseUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+model User {
+    id String @id @default(cuid())
+    email String @unique
+    password String @password @omit
+    orders Order[]
+
+    // everybody can signup
+    @@allow('create', true)
+
+    // user profile is publicly readable
+    @@allow('read', true)
+}
+
+model Jogo {
+    id Int @id @default(autoincrement())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    jogo String
+    genero String
+    distribuidora String
+    plataforma String
+    preco Float
+    imagem String
+    quantidade Int @default(0)
+    order Order? @relation(fields: [orderId], references: [id])
+    orderId String?
+    
+    // unsold jogo are readable to all;
+    @@allow('read', true)
+}
+
+model Order {
+    id String @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    jogos Jogo[]
+    user User @relation(fields: [userId], references: [id])
+    userId String
+
+    @@allow('read,create', auth() == user)
+}
+
+
+plugin openapi {
+    provider = '@zenstackhq/openapi'
+    prefix = '/api'
+    flavor = 'rest'
+    title = 'Jogo Store API'
+    specVersion = '3.0.0'
+    version = '0.1.0'
+    description = 'Jogo store API'
+    output = 'jogostore-api.json'
+    securitySchemes = { 
+        myBearer: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
+    }
+}
